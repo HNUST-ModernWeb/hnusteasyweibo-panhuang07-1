@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pcc2.social.mapper.PostMapper">
+    <select id="findAll" resultType="com.pcc2.social.entity.Post">
+        SELECT p.*, u.username, u.nickname, u.avatar,
+               ((1.5 + LN(1 + (p.like_count * 1.0 + p.comment_count * 2.0 + p.repost_count * 2.8)))
+                 / POW(TIMESTAMPDIFF(HOUR, p.created_at, NOW()) + 2, 1.8)) AS all_score
+        FROM post p
+        LEFT JOIN user u ON p.user_id = u.id
+        ORDER BY all_score DESC, p.created_at DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+    
+    <select id="findByUserId" resultType="com.pcc2.social.entity.Post">
+        SELECT p.*, u.username, u.nickname, u.avatar
+        FROM post p
+        LEFT JOIN user u ON p.user_id = u.id
+        WHERE p.user_id = #{userId}
+        ORDER BY p.created_at DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="findByFollowing" resultType="com.pcc2.social.entity.Post">
+        SELECT p.*, u.username, u.nickname, u.avatar
+        FROM post p
+        INNER JOIN follow f ON p.user_id = f.following_id
+        LEFT JOIN user u ON p.user_id = u.id
+        WHERE f.follower_id = #{userId}
+        ORDER BY p.created_at DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="findHot" resultType="com.pcc2.social.entity.Post">
+        SELECT p.*, u.username, u.nickname, u.avatar,
+               (LN(1 + (p.like_count * 1.2 + p.comment_count * 2.4 + p.repost_count * 3.0))
+                 / POW(TIMESTAMPDIFF(HOUR, p.created_at, NOW()) + 2, 1.2)) AS hot_score
+        FROM post p
+        LEFT JOIN user u ON p.user_id = u.id
+        WHERE p.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        ORDER BY hot_score DESC, p.created_at DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="findTodayHot" resultType="com.pcc2.social.entity.Post">
+        SELECT p.*, u.username, u.nickname, u.avatar,
+               (LN(1 + (p.like_count * 1.2 + p.comment_count * 2.4 + p.repost_count * 3.0))
+                 / POW(TIMESTAMPDIFF(HOUR, p.created_at, NOW()) + 2, 1.2)) AS hot_score
+        FROM post p
+        LEFT JOIN user u ON p.user_id = u.id
+        WHERE p.created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)
+        ORDER BY hot_score DESC, p.created_at DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="search" resultType="com.pcc2.social.entity.Post">
+        SELECT p.*, u.username, u.nickname, u.avatar
+        FROM post p
+        LEFT JOIN user u ON p.user_id = u.id
+        WHERE p.content LIKE CONCAT('%', #{keyword}, '%')
+           OR u.username LIKE CONCAT('%', #{keyword}, '%')
+           OR u.nickname LIKE CONCAT('%', #{keyword}, '%')
+        ORDER BY p.created_at DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="findById" resultType="com.pcc2.social.entity.Post">
+        SELECT p.*, u.username, u.nickname, u.avatar
+        FROM post p
+        LEFT JOIN user u ON p.user_id = u.id
+        WHERE p.id = #{id}
+    </select>
+
+    <select id="countByUserId" resultType="int">
+        SELECT COUNT(1)
+        FROM post
+        WHERE user_id = #{userId}
+    </select>
+    
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO post (user_id, content, media_url, media_type, repost_id, original_content, like_count, comment_count, repost_count)
+        VALUES (#{userId}, #{content}, #{mediaUrl}, #{mediaType}, #{repostId}, #{originalContent}, 0, 0, 0)
+    </insert>
+    
+    <delete id="delete">
+        DELETE FROM post WHERE id = #{id}
+    </delete>
+    
+    <update id="updateLikeCount">
+        UPDATE post SET like_count = #{count} WHERE id = #{id}
+    </update>
+    
+    <update id="updateCommentCount">
+        UPDATE post SET comment_count = #{count} WHERE id = #{id}
+    </update>
+    
+    <update id="updateRepostCount">
+        UPDATE post SET repost_count = #{count} WHERE id = #{id}
+    </update>
+</mapper>
